@@ -1,0 +1,58 @@
+{
+  "expo": {
+    "name": "KYYS Workout",
+    "slug": "kyys-workout",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#09090b"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/icon.png",
+        "backgroundColor": "#000000"
+      },
+      "package": "com.rickymoreno.kyysworkout",
+      "permissions": [
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_BACKGROUND_LOCATION",
+        "android.permission.FOREGROUND_SERVICE",
+        "android.permission.FOREGROUND_SERVICE_LOCATION",
+        "android.permission.INTERNET"
+      ]
+    },
+    "plugins": [
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "KYYS Workout menggunakan lokasi untuk merekam rute aktivitasmu, termasuk saat aplikasi diminimize.",
+          "locationAlwaysPermission": "KYYS Workout menggunakan lokasi di latar belakang untuk terus merekam rute aktivitasmu saat aplikasi diminimize.",
+          "locationWhenInUsePermission": "KYYS Workout menggunakan lokasi untuk merekam rute aktivitasmu.",
+          "isAndroidBackgroundLocationEnabled": true,
+          "isAndroidForegroundServiceEnabled": true
+        }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "extraProguardRules": "-keep public class com.horcrux.svg.** {*;}"
+          }
+        }
+      ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "7e809dee-dc40-4675-aa4a-5d232fddf303"
+      }
+    }
+  }
+}
