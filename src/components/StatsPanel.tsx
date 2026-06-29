@@ -1,6 +1,6 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { Zap, Clock, Navigation, Gauge } from 'lucide-react-native';
+import { SportShoe, Clock, Navigation, Gauge } from 'lucide-react-native';
 import { ActivityType } from '../types';
 
 interface StatsPanelProps {
@@ -58,7 +58,7 @@ export default function StatsPanel({ distance, duration, type }: StatsPanelProps
 
       <View style={styles.statBox}>
         <View style={styles.iconLabelRow}>
-          {type === 'cycling' ? <Gauge color="#71717a" size={12} /> : <Zap color="#71717a" size={12} />}
+          {type === 'cycling' ? <Gauge color="#71717a" size={12} /> : <SportShoe color="#71717a" size={12} />}
           <Text style={styles.label}>{type === 'cycling' ? 'SPEED' : 'PACE'}</Text>
         </View>
         <Text style={styles.value}>

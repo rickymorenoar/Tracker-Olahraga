@@ -1,6 +1,6 @@
 import React from 'react';
 import { StyleSheet, View, Text, TouchableOpacity, FlatList } from 'react-native';
-import { Footprints, Bike, Trash2, Zap } from 'lucide-react-native';
+import { Footprints, Bike, Trash2, SportShoe } from 'lucide-react-native';
 import { ActivityLog, ActivityType } from '../types';
 
 interface HistoryListProps {
@@ -13,7 +13,7 @@ export default function HistoryList({ history, onClear, onPressItem }: HistoryLi
   const renderActivityIcon = (type: ActivityType) => {
     switch (type) {
       case 'running':
-        return <Zap color="#fc5200" size={18} strokeWidth={2.5} />;
+        return <SportShoe color="#fc5200" size={18} strokeWidth={2.5} />;
       case 'walking':
         return <Footprints color="#fc5200" size={18} strokeWidth={2.5} />;
       case 'cycling':

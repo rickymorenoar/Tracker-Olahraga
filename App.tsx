@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { StyleSheet, View, Text, TouchableOpacity, SafeAreaView, StatusBar, Alert } from 'react-native';
-import MapView, { Polyline, Marker, UrlTile } from 'react-native-maps';
+// Ganti react-native-maps dengan WebView
+import { WebView } from 'react-native-webview';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Location from 'expo-location';
 import { Play, Square, Pause } from 'lucide-react-native';
@@ -19,9 +20,6 @@ import {
 
 const STORAGE_KEY = '@kyys_workout_history';
 
-// Tile gratis tanpa API key, tema gelap ala CartoDB Dark Matter
-const DARK_TILE_URL = 'https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png';
-
 const calculateHaversineDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
   const R = 6371;
   const dLat = ((lat2 - lat1) * Math.PI) / 180;
@@ -32,6 +30,77 @@ const calculateHaversineDistance = (lat1: number, lon1: number, lat2: number, lo
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   return R * c;
 };
+
+// 📄 RAW HTML PETA LEAFLET (OpenStreetMap) - 100% Gratis & Anti-Crash
+const LEAFLET_HTML = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <style>
+    body, html, #map { margin: 0; padding: 0; height: 100%; width: 100%; background: #09090b; }
+    /* Membikin background tile peta agak gelap mencocokkan tema dark */
+    .leaflet-tile-container { filter: invert(100%) hue-rotate(180deg) brightness(95%) contrast(90%); }
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+  <script>
+    var map = L.map('map', { zoomControl: false }).setView([-6.2000, 106.8166], 13);
+    
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19
+    }).addTo(map);
+
+    var pathLine = L.polyline([], { color: '#fc5200', weight: 5 }).addTo(map);
+    var currentMarker = null;
+    var startMarker = null;
+
+    // Fungsi update lokasi saat tracking aktif
+    function updateLocation(lat, lng, isTracking) {
+      var pos = [lat, lng];
+      
+      if (!currentMarker) {
+        currentMarker = L.circleMarker(pos, { color: '#3b82f6', fillColor: '#3b82f6', fillOpacity: 1, radius: 7 }).addTo(map);
+        map.setView(pos, 16);
+      } else {
+        currentMarker.setLatLng(pos);
+      }
+
+      if (isTracking) {
+        pathLine.addLatLng(pos);
+        if (!startMarker && pathLine.getLatLngs().length === 1) {
+          startMarker = L.circleMarker(pos, { color: '#5a7fa4', radius: 6 }).addTo(map);
+        }
+        map.panTo(pos);
+      }
+    }
+
+    // Fungsi menggambar ulang rute lama pas klik item history
+    function drawStaticRoute(coordsJSON) {
+      var coords = JSON.parse(coordsJSON);
+      if (coords.length === 0) return;
+      
+      // Bersihkan rute lama
+      pathLine.setLatLngs([]);
+      if (startMarker) { map.removeLayer(startMarker); startMarker = null; }
+      if (currentMarker) { map.removeLayer(currentMarker); currentMarker = null; }
+
+      var points = coords.map(function(c) { return [c.latitude, c.longitude]; });
+      pathLine.setLatLngs(points);
+      
+      startMarker = L.circleMarker(points[0], { color: '#5a7fa4', radius: 6 }).addTo(map);
+      currentMarker = L.circleMarker(points[points.length - 1], { color: '#fc5200', radius: 6 }).addTo(map);
+      
+      var bounds = L.latLngBounds(points);
+      map.fitBounds(bounds, { padding: [30, 30] });
+    }
+  </script>
+</body>
+</html>
+`;
 
 export default function App() {
   const [showWelcome, setShowWelcome] = useState<boolean>(true);
@@ -61,11 +130,20 @@ export default function App() {
   const timerRef = useRef<any>(null);
   const syncIntervalRef = useRef<any>(null);
   const locationSubscriptionRef = useRef<Location.LocationSubscription | null>(null);
+  const webViewRef = useRef<WebView>(null); // Tambah ref untuk jembatan komunikasi WebView
 
-  // Ref ini selalu menyimpan titik terakhir, dipakai untuk hitung jarak
-  // tanpa kena masalah stale-closure dari setState async.
   const lastPointRef = useRef<LocationCoordinate | null>(null);
   const distanceRef = useRef<number>(0);
+
+  // Trigger update koordinat ke dalam WebView secara real-time
+  const sendLocationToMap = (lat: number, lng: number, trackingStatus: boolean) => {
+    webViewRef.current?.injectJavaScript(`
+      if (typeof updateLocation === 'function') {
+        updateLocation(${lat}, ${lng}, ${trackingStatus});
+      }
+      true;
+    `);
+  };
 
   useEffect(() => {
     (async () => {
@@ -103,8 +181,14 @@ export default function App() {
     return () => {
       stopLocationTracking(true).catch(console.error);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Kirim lokasi awal ketika WebView sudah siap render
+  useEffect(() => {
+    if (mapReady && currentLocation) {
+      sendLocationToMap(currentLocation.latitude, currentLocation.longitude, isTracking);
+    }
+  }, [mapReady, currentLocation]);
 
   useEffect(() => {
     if (isTracking) {
@@ -144,7 +228,6 @@ export default function App() {
             point.latitude,
             point.longitude
           );
-          // Filter noise GPS: lompatan absurd (>0.3km dalam satu tick) diabaikan
           if (diff < 0.3) {
             distanceRef.current += diff;
           } else {
@@ -153,6 +236,9 @@ export default function App() {
         }
         lastPointRef.current = point;
         updated.push(point);
+        
+        // Push koordinat satu per satu ke peta Leaflet
+        sendLocationToMap(point.latitude, point.longitude, true);
       }
 
       return updated;
@@ -162,8 +248,6 @@ export default function App() {
     setDistance(distanceRef.current);
   }, []);
 
-  // Polling antrian titik dari background task selama tracking aktif.
-  // Ini juga menangkap update saat app kembali ke foreground.
   useEffect(() => {
     if (isTracking) {
       syncIntervalRef.current = setInterval(async () => {
@@ -191,7 +275,6 @@ export default function App() {
       lastPointRef.current = routeCoordinates.length > 0 ? routeCoordinates[routeCoordinates.length - 1] : null;
       distanceRef.current = distance;
 
-      // Foreground watcher: update halus selagi app dibuka
       locationSubscriptionRef.current = await Location.watchPositionAsync(
         {
           accuracy: Location.Accuracy.BestForNavigation,
@@ -206,7 +289,6 @@ export default function App() {
 
       console.log('✅ Foreground location tracking started');
 
-      // Background watcher: tetap jalan walau app diminimize
       const backgroundOk = await startBackgroundLocationTracking();
       if (!backgroundOk) {
         Alert.alert(
@@ -339,6 +421,17 @@ export default function App() {
       coords: log.coordinates || [],
     });
     setShowSummary(true);
+
+    // Kirim perintah gambar rute statis lama ke WebView
+    if (log.coordinates && log.coordinates.length > 0) {
+      const coordsJSON = JSON.stringify(log.coordinates);
+      webViewRef.current?.injectJavaScript(`
+        if (typeof drawStaticRoute === 'function') {
+          drawStaticRoute('${coordsJSON}');
+        }
+        true;
+      `);
+    }
   };
 
   return (
@@ -350,27 +443,15 @@ export default function App() {
       ) : (
         <>
           {currentLocation ? (
-            <MapView
-              style={styles.map}
-              showsUserLocation={true}
-              followsUserLocation={true}
-              onMapReady={() => setMapReady(true)}
-              initialRegion={{
-                latitude: currentLocation.latitude,
-                longitude: currentLocation.longitude,
-                latitudeDelta: 0.005,
-                longitudeDelta: 0.005,
-              }}
-            >
-              <UrlTile urlTemplate={DARK_TILE_URL} maximumZ={19} flipY={false} />
-
-              {routeCoordinates.length > 0 && (
-                <Polyline coordinates={routeCoordinates} strokeColor="#fc5200" strokeWidth={5} />
-              )}
-              {routeCoordinates.length > 0 && (
-                <Marker coordinate={routeCoordinates[0]} pinColor="#5a7fa4" />
-              )}
-            </MapView>
+            <View style={styles.mapContainer}>
+              <WebView
+                ref={webViewRef}
+                originWhitelist={['*']}
+                source={{ html: LEAFLET_HTML }}
+                onLoadEnd={() => setMapReady(true)}
+                style={styles.map}
+              />
+            </View>
           ) : (
             <View style={styles.loading}>
               <Text style={styles.loadingText}>MENGUNCI KOORDINAT SATELIT...</Text>
@@ -431,6 +512,7 @@ export default function App() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#09090b' },
+  mapContainer: { flex: 1 }, // Membikin container pembungkus WebView
   map: { flex: 1 },
   loading: { flex: 1, backgroundColor: '#09090b', justifyContent: 'center', alignItems: 'center' },
   loadingText: { color: '#71717a', fontSize: 11, fontWeight: '700', letterSpacing: 1.5 },

@@ -51,8 +51,9 @@
     ],
     "extra": {
       "eas": {
-        "projectId": "7e809dee-dc40-4675-aa4a-5d232fddf303"
+        "projectId": "4cc48dc5-ba12-4bcb-9743-f1ab2462f2ad"
       }
-    }
+    },
+    "owner": "rickymorenoo"
   }
 }

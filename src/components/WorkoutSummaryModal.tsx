@@ -1,7 +1,7 @@
 import React, { useRef } from 'react';
 import { Modal, StyleSheet, View, Text, TouchableOpacity, Dimensions, Alert } from 'react-native';
 import MapView, { Polyline, UrlTile } from 'react-native-maps';
-import { X, Share2, Footprints, Bike, Zap } from 'lucide-react-native';
+import { X, Share2, Footprints, Bike, SportShoe } from 'lucide-react-native';
 import ViewShot, { captureRef } from 'react-native-view-shot';
 import * as Sharing from 'expo-sharing';
 import Logo from './Logo';
@@ -103,7 +103,7 @@ export default function WorkoutSummaryModal({
       return <Bike color={iconColor} size={iconSize} strokeWidth={2.5} />;
     }
     if (type === 'running') {
-      return <Zap color={iconColor} size={iconSize} strokeWidth={2.5} />;
+      return <SportShoe color={iconColor} size={iconSize} strokeWidth={2.5} />;
     }
     return <Footprints color={iconColor} size={iconSize} strokeWidth={2.5} />;
   };
@@ -117,7 +117,7 @@ export default function WorkoutSummaryModal({
         return <Footprints color={iconColor} size={56} strokeWidth={1.5} />;
       case 'running':
       default:
-        return <Zap color={iconColor} size={56} strokeWidth={1.5} />;
+        return <SportShoe color={iconColor} size={56} strokeWidth={1.5} />;
     }
   };
 

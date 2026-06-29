@@ -1,6 +1,6 @@
 import React from 'react';
 import { StyleSheet, Text, View, TouchableOpacity } from 'react-native';
-import { Footprints, Bike, Zap } from 'lucide-react-native';
+import { Footprints, Bike, SportShoe } from 'lucide-react-native';
 import { ActivityType } from '../types';
 
 interface ActivitySelectorProps {
@@ -11,7 +11,7 @@ interface ActivitySelectorProps {
 
 export default function ActivitySelector({ currentType, onSelectType, isTracking }: ActivitySelectorProps) {
   const options = [
-    { id: 'running', label: 'Lari', icon: Zap },
+    { id: 'running', label: 'Lari', icon: SportShoe },
     { id: 'walking', label: 'Jalan', icon: Footprints },
     { id: 'cycling', label: 'Sepeda', icon: Bike },
   ] as const;
